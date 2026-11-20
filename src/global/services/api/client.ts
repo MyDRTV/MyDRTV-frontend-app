@@ -1,17 +1,28 @@
-import * as SecureStore from "expo-secure-store";
+// axios er en HTTP-klient, der bruges til at foretage API-anmodninger.
+// I dette tilfælde bruges axios til at oprette en instans af API-klienten,
+// som kan bruges til at kommunikere med backend-serveren.
+import axios, { AxiosError, InternalAxiosRequestConfig } from "axios";
 
-const TOKEN_KEY = "access_token";
+import { tokenStorage } from "../storage/tokenStorage";
 
-export const tokenStorage = {
-  getToken: async (): Promise<string | null> => {
-    return await SecureStore.getItemAsync(TOKEN_KEY);
+// Opret Axios-instansen med standardindstillinger
+export const api = axios.create({
+  baseURL: process.env.EXPO_PUBLIC_API_URL,
+  headers: { "Content-Type": "application/json" },
+});
+
+// Request interceptor for at tilføje Authorization header til alle anmodninger, hvis token er tilgængeligt
+api.interceptors.request.use(
+  async (config: InternalAxiosRequestConfig) => {
+    const token: string | null = await tokenStorage.getToken();
+
+    if (token) {
+      config.headers.Authorization = `Bearer ${token}`;
+    }
+
+    return config;
   },
-
-  setToken: async (token: string): Promise<void> => {
-    await SecureStore.setItemAsync(TOKEN_KEY, token);
+  (error: AxiosError) => {
+    return Promise.reject(error);
   },
-
-  removeToken: async (): Promise<void> => {
-    await SecureStore.deleteItemAsync(TOKEN_KEY);
-  },
-};
+);
